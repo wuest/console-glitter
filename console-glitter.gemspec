@@ -9,8 +9,8 @@ Gem::Specification.new do |s|
   s.authors     = ['Tina Wuest']
   s.email       = 'tina@wuest.me'
   s.homepage    = 'https://github.com/wuest/console-glitter'
+  s.license     = 'MIT'
+  s.files       = `git ls-files lib`.split("\n")
 
-  s.files = `git ls-files lib`.split("\n")
-
-  s.license = 'MIT'
+  s.add_development_dependency 'sorbet'
 end
