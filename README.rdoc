@@ -1,0 +1,132 @@
+= ConsoleGlitter
+
+ConsoleGlitter is a small library meant to make building nice looking CLI
+applications easier.  Two modules are exposed: one to enable user interaction
+and one to handle ANSI escape sequences (e.g. color) when they are supported,
+which is assumed to be all cases except for when Ruby reports that it is
+running under Windows
+
+== Using ConsoleGlitter
+
+ConsoleGlitter exposes a simple interface in order to keep pain related to
+integration low:
+
+=== Simple Calls to ANSI escapes
+
+The eight basic colors are implemented as named calls:
+
+  include ConsoleGlitter
+  ANSI.black   # => "\033[30m"
+  ANSI.red     # => "\033[31m"
+  ANSI.green   # => "\033[32m"
+  ANSI.brown   # => "\033[33m"
+  ANSI.blue    # => "\033[34m"
+  ANSI.magenta # => "\033[35m"
+  ANSI.cyan    # => "\033[36m"
+  ANSI.white   # => "\033[37m"
+
+Additionally, bg_<color> is implemented to set the background:
+
+  ANSI.bg_black # => "\033[40m"
+  # etc...
+
+Finally, simple calls are provided for the reset, bold, faint, underline and
+blink control sequences.
+
+=== Color Approximation
+
+Through the hex_color and bg_hex_color calls, a 4- or 8-bit per channel color
+(e.g. HTML/CSS color selection) can be approximated to the 216 color palatte
+available in 256 color mode:
+
+  ANSI.hex_color("000000") # => "\033[38;5;16m"
+  ANSI.bg_hex_color("FFF") # => "\033[48;5;231m"
+
+=== Additional Sequences
+
+To provide access to sequences not directly implemented, the escape method is
+provided:
+
+  # Konsole supports 24-bit color directly
+  ANSI.escape([48, 2, 255, 165, 0].join(';')) # => "\033[48;2;255;165;0m"
+
+=== User Interaction
+
+The UI module provides several methods for interacting with the user and
+providing feedback in a CLI application.  In order to prompt a user for input,
+the prompt and prompt_yn methods can be employed:
+
+  # Prompt a user for their name, do not accept empty answers.
+  name = UI.prompt("Name")
+
+  # Prompt a user for their age, but allow an empty response.
+  age = UI.prompt("Age (optional)", allow_empty: true)
+
+  # Prompt a user for their favorite programming language, providing a default
+  # answer.
+  language = UI.prompt("Favorite programming language", default_answer: "ruby")
+
+  # Prompt a user for their OS, restricting options.
+  os = UI.prompt("OS", valid_answers: ['Linux', 'BSD', 'OS X', 'Windows'])
+
+  # Prompt user to verify that all input is correct.  Will return true/false.
+  correct = UI.prompt_yn("Is all this correct?", default_answer: 'Y')
+
+=== Feedback
+
+A helper function to build tables to display to users is also included.  The
+expected format is an Array of Hashes.  An optional labels Hash will allow for
+arbitrary labeling of columns:
+
+  table = [{'col1' => 'a', 'col2' => 'b', 'col3' => 'c'},
+           {'col1' => '1', 'col2' => '2', 'col3' => '3'}]
+  UI.build_grid(table)
+  # => "+------+------+------+\n" \
+  # => "| col1 | col2 | col3 |\n" \
+  # => "+------+------+------+\n" \
+  # => "|    a |    b |    c |\n" \
+  # => "|    1 |    2 |    3 |\n" \
+  # => "+------+------+------+"
+
+  column_names = {'col1' => "A's", 'col2' => "B's", 'col3' => "C's"}
+  UI.build_grid(table, column_names)
+  # => "+-----+-----+-----+\n" \
+  # => "| A's | B's | C's |\n" \
+  # => "+-----+-----+-----+\n" \
+  # => "|   a |   b |   c |\n" \
+  # => "|   1 |   2 |   3 |\n" \
+  # => "+-----+-----+-----+"
+
+=== Task status/"spinner"
+
+A "spinner" can be displayed to a user while a function is performed in the
+background, reporting the status of the function once it finishes and returning
+whatever the block provided returns once finished:
+
+  UI.spinner("This will report OK") { sleep 4 }
+  # This will display a spinner that looks like the following:
+  # [... ] This will report OK
+  # Until the method completes, at which point it will report:
+  # [ ok ]
+
+  answer = UI.spinner("This will return true") { true }
+  # => true
+
+  UI.spinner("This will report a failure, then raise") { raise StandardError }
+  # This will display:
+  # [fail]
+  # then StandardError will be passed along to the calling method.
+
+== Contributions
+
+Contributions are welcome!  To contribute to the project, please:
+
+  * Fork the project.
+  * Make a branch for your contribution if it's more than a simple fix.
+  * Add tests for new functionality.
+  * Send a pull request on GitHub against the working branch.
+
+== Copyright
+
+Copyright (c) 2014-2019 Tina Wuest under the MIT license. See LICENSE for
+details.
