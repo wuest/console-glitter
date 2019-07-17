@@ -1,3 +1,4 @@
+# typed: strict
 require 'console-glitter'
 require 'console-glitter/ansi'
 require 'readline'
@@ -30,27 +31,29 @@ module ConsoleGlitter
     #            as defined in autocomplete_lambda if present.  (default: nil)
     #
     # Returns a String containing the answer provided by the user.
-    def prompt(question, options = {}, wordlist = [], block = nil)
+    def prompt(question, options = {}, wordlist = [], &block)
       default = options[:default_answer].to_s
       allow_empty = options[:allow_empty]
-      valid = regexify_answers(options[:valid_answers])
+      valid = regexify_answers(Array(options[:valid_answers]))
 
       default_display = " [#{default.strip}]" unless default.empty?
       question = "#{question.strip}#{default_display}> "
 
-      answer = nil
-      while answer.nil?
-        answer = user_prompt(question, wordlist, block)
-        answer = default if answer.empty?
+      answer = { answer: nil }
+      while answer[:answer].nil?
+        answer[:answer] = user_prompt(question, wordlist, &block)
+        answer[:answer] = default if answer.empty?
 
-        if answer.empty?
-          answer = nil unless allow_empty
+        if answer[:answer].empty?
+          answer[:answer] = nil unless allow_empty
         elsif valid.any?
-          answer = nil unless valid.map { |valid| answer.match(valid) }.any?
+          unless valid.map { |valid| answer[:answer].match(valid) }.any?
+            answer[:answer] = nil
+          end
         end
       end
 
-      answer
+      answer[:answer]
     end
 
     # Public: Wrap Console#prompt but accept only a Y/N response.
@@ -117,7 +120,7 @@ module ConsoleGlitter
       old_append = Readline.completion_append_character
 
       Readline.completion_append_character = ''
-      response = prompt(question, args, [], fs_lambda)
+      response = prompt(question, args, [], &fs_lambda)
       Readline.completion_append_character = old_append
 
       response
@@ -132,7 +135,7 @@ module ConsoleGlitter
     # Returns the result of the yielded block if successful.
     # Raises whatever is raised inside the yielded block.
     def spinner(message, &block)
-      success = nil
+      success = { success: nil }
       result = nil
 
       pre = "\r#{bold}#{white} [#{reset}"
@@ -143,13 +146,13 @@ module ConsoleGlitter
       thread = Thread.new do
         step = 0
         spin = ["    ", ".   ", "..  ", "... ", "....", " ...", "  ..", "   ."]
-        while success.nil?
+        while success[:success].nil?
           print "#{pre}#{spin[step % 8]}#{post}"
           step += 1
           sleep 0.5
         end
 
-        if success
+        if success[:success]
           print "#{pre_ok}#{post}\n"
         else
           print "#{pre_fail}#{post}\n"
@@ -158,11 +161,11 @@ module ConsoleGlitter
 
       begin
         result = yield
-        success = true
+        success[:success] = true
         thread.join
         return result
       rescue
-        success = false
+        success[:success] = false
         thread.join
         raise
       end
@@ -177,15 +180,11 @@ module ConsoleGlitter
     #
     # Returns a String containing the grid.
     # Raises ArgumentError if anything but an Array is passed as rows.
-    def build_grid(rows, labels = nil)
-      if labels.nil?
-        labels = rows[0].keys.reduce({}) { |c,e| c.merge({e => e}) }
-      end
-
+    def build_grid(rows, labels = rows.first.keys.reduce({}) { |c,e| c.merge({e => e}) })
       keys = labels.keys
 
       max_width = labels.reduce({}) do |c,e|
-        c.merge({e[0]=> ([labels] + rows).map { |r| r[e[0]].length }.max})
+        c.merge({e[0]=> ([labels] + rows).map { |r| r[e[0]].to_s.length }.max})
       end
 
       grid_rule = max_width.reduce('+') do |c,e|
@@ -197,15 +196,12 @@ module ConsoleGlitter
       grid << keys.reduce('|') do |c,e|
         c + " #{bold}% #{max_width[e]}s#{reset} |" % labels[e]
       end
-      grid << "\n"
+      grid << "\n#{grid_rule}"
 
-      grid << rows.reduce(grid_rule) do |c,e|
-        content = keys.reduce('') do |s,k|
-          s + " % #{max_width[k]}s |" % e[k]
-        end
-        c + "|#{content}\n"
+      step = rows.map do |r|
+        "|" + keys.map { |k| sprintf(" % #{max_width[k]}s |", r[k.to_s]) }.join
       end
-      grid << grid_rule
+      grid + step.join("\n") + "\n" + grid_rule
     end
 
     private
@@ -221,7 +217,7 @@ module ConsoleGlitter
     #            as defined in autocomplete_lambda if present.  (default: nil)
     #
     # Returns a String.
-    def user_prompt(question, wordlist, block = nil)
+    def user_prompt(question, wordlist, &block)
       block = autocomplete_lambda(wordlist) if block.nil?
       old_completion_proc = Readline.completion_proc
 
@@ -240,7 +236,8 @@ module ConsoleGlitter
     #
     # Returns a lambda which returns an Array.
     def autocomplete_lambda(wordlist)
-      lambda { |s| wordlist.grep(/^#{Regexp.escape(s)}/) }
+      wl = wordlist.to_a
+      lambda { |s| wl.grep(/^#{Regexp.escape(s)}/) }
     end
 
     # Internal: Generate Regexps for any String in an array to be used in order
@@ -252,9 +249,11 @@ module ConsoleGlitter
     #
     # Returns an Array of Regexps.
     def regexify_answers(valid_answers)
-      valid_answers.to_a.map do |answer|
-        if answer.is_a?(String)
-          Regexp.new("^#{Regexp.escape(answer)}$")
+      valid_answers
+        .to_a
+        .map do |answer|
+        unless answer.is_a?(Regexp)
+          Regexp.new("^#{Regexp.escape(answer.to_s)}$")
         else
           answer
         end

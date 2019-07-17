@@ -1,3 +1,4 @@
+# typed: false
 require 'helper'
 
 class TestColorEscapes < Test::Unit::TestCase

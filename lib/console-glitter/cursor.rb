@@ -1,3 +1,4 @@
+# typed: strict
 require 'console-glitter'
 
 module ConsoleGlitter

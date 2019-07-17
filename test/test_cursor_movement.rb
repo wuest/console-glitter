@@ -1,3 +1,4 @@
+# typed: false
 require 'helper'
 
 class TestCursorMovement < Test::Unit::TestCase

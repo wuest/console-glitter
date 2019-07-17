@@ -1,3 +1,4 @@
+# typed: strong
 module ConsoleGlitter
   VERSION = '0.3.0'
 

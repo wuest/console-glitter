@@ -1,3 +1,4 @@
+# typed: true
 require 'test/unit'
 require 'console-glitter'
 require 'console-glitter/cursor'

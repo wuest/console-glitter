@@ -1,3 +1,5 @@
+# typed: true
+
 require 'console-glitter'
 
 module ConsoleGlitter
@@ -120,8 +122,7 @@ module ConsoleGlitter
       # addition to a 24 color gradient from black to white from 0xe8 - 0xff.)
       [blue,green,red].each_with_index.map do |c,i|
         (c/(((1 << bpc)-1)/5)) * 6**i
-      end.
-      reduce(&:+) + 0x10
+      end.sum + 0x10
     end
 
     # Define most common ANSI sequences 
